@@ -2237,6 +2237,7 @@ dependencies = [
  "async-trait",
  "aws-config",
  "aws-sdk-bedrockruntime",
+ "base64 0.21.7",
  "chrono",
  "colored",
  "deadpool-postgres",

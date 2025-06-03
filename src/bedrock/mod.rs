@@ -123,7 +123,6 @@ impl BedrockClient {
         }
     }
 
-    /// Search for similar content using text query
     pub async fn semantic_search(
         &self,
         query: &str,
@@ -132,7 +131,6 @@ impl BedrockClient {
         namespace: Option<&str>,
         include_content: bool,
     ) -> Result<crate::models::storage::VectorSearchResponse> {
-        // Generate embedding for query
         let embedding_request = crate::models::embedding::EmbeddingRequest {
             text: query.to_string(),
             model_id: model_id.map(String::from),
@@ -143,7 +141,6 @@ impl BedrockClient {
             .generate_embedding(embedding_request)
             .await?;
 
-        // Search if storage is available
         if let Some(storage) = &self.storage {
             let search_query = crate::models::storage::VectorSearch {
                 vector: embedding_response.embedding,
