@@ -1,11 +1,11 @@
-# RGen - Rust AWS Bedrock Client Library
+# rgenai - Rust AWS Bedrock Client Library
 
-[![Crates.io](https://img.shields.io/crates/v/rgen.svg)](https://crates.io/crates/rgen)
-[![Documentation](https://docs.rs/rgen/badge.svg)](https://docs.rs/rgen)
-[![License](https://img.shields.io/crates/l/rgen.svg)](LICENSE)
-[![Build Status](https://github.com/DevMaan707/rgen/workflows/CI/badge.svg)](https://github.com/DevMaan707/rgen/actions)
+[![Crates.io](https://img.shields.io/crates/v/rgenai.svg)](https://crates.io/crates/rgenai)
+[![Documentation](https://docs.rs/rgenai/badge.svg)](https://docs.rs/rgenai)
+[![License](https://img.shields.io/crates/l/rgenai.svg)](LICENSE)
+[![Build Status](https://github.com/DevMaan707/rgenai/workflows/CI/badge.svg)](https://github.com/DevMaan707/rgenai/actions)
 
-**RGen** is a comprehensive Rust library for AWS Bedrock that provides easy-to-use clients for text generation, image generation, embeddings, and vector storage. Built with performance, type safety, and developer experience in mind.
+**RGenAi** is a comprehensive Rust library for AWS Bedrock that provides easy-to-use clients for text generation, image generation, embeddings, and vector storage. Built with performance, type safety, and developer experience in mind.
 
 ## 🚀 Features
 
@@ -41,10 +41,10 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rgen = "0.1.0"
+rgenai = "0.1.0"
 
 # Optional features
-rgen = { version = "0.1.0", features = ["postgres", "pinecone", "upstash"] }
+rgenai = { version = "0.1.0", features = ["postgres", "pinecone", "upstash"] }
 ```
 
 ### Feature Flags
@@ -58,12 +58,12 @@ rgen = { version = "0.1.0", features = ["postgres", "pinecone", "upstash"] }
 ### Basic Text Generation
 
 ```rust
-use rgen::{BedrockClient, BedrockConfig, TextGenerationRequest};
+use rgenai::{BedrockClient, BedrockConfig, TextGenerationRequest};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logger
-    rgen::logger::init()?;
+    rgenai::logger::init()?;
 
     // Create Bedrock client
     let config = BedrockConfig::new()
@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use futures::StreamExt;
-use rgen::{BedrockClient, BedrockConfig, TextGenerationRequest};
+use rgenai::{BedrockClient, BedrockConfig, TextGenerationRequest};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -127,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Image Generation
 
 ```rust
-use rgen::{BedrockClient, BedrockConfig, ImageGenerationRequest};
+use rgenai::{BedrockClient, BedrockConfig, ImageGenerationRequest};
 use std::fs;
 
 #[tokio::main]
@@ -157,7 +157,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Vector Storage and RAG
 
 ```rust
-use rgen::{BedrockClient, BedrockConfig, Config, PostgresConfig};
+use rgenai::{BedrockClient, BedrockConfig, Config, PostgresConfig};
 use std::collections::HashMap;
 
 #[tokio::main]
@@ -248,7 +248,7 @@ PORT=8080
 ### Programmatic Configuration
 
 ```rust
-use rgen::{BedrockConfig, Config, PostgresConfig, PineconeConfig};
+use rgenai::{BedrockConfig, Config, PostgresConfig, PineconeConfig};
 
 let bedrock_config = BedrockConfig::new()
     .with_region("us-west-2")
@@ -310,7 +310,7 @@ let storage_config = Config::new()
 ### PostgreSQL with pgvector
 
 ```rust
-use rgen::{Config, PostgresConfig, VectorStorageManager};
+use rgenai::{Config, PostgresConfig, VectorStorageManager};
 
 let config = Config::new()
     .with_postgres(
@@ -336,7 +336,7 @@ let result = storage.insert(insert).await?;
 ### Pinecone
 
 ```rust
-use rgen::{Config, PineconeConfig, VectorStorageManager};
+use rgenai::{Config, PineconeConfig, VectorStorageManager};
 
 let config = Config::new()
     .with_pinecone(
@@ -352,7 +352,7 @@ let storage = VectorStorageManager::new(config).await?;
 ### Upstash
 
 ```rust
-use rgen::{Config, UpstashConfig, VectorStorageManager};
+use rgenai::{Config, UpstashConfig, VectorStorageManager};
 
 let config = Config::new()
     .with_upstash(
@@ -366,7 +366,7 @@ let storage = VectorStorageManager::new(config).await?;
 ## 🔍 Semantic Search
 
 ```rust
-use rgen::VectorSearch;
+use rgenai::VectorSearch;
 
 let search_query = VectorSearch {
     vector: query_embedding,
@@ -387,10 +387,10 @@ for result in results.results {
 
 ## 📝 Logging
 
-RGen includes a beautiful, structured logging system:
+rgenai includes a beautiful, structured logging system:
 
 ```rust
-use rgen::logger::{init_with_config, LoggerConfig, LogLevel};
+use rgenai::logger::{init_with_config, LoggerConfig, LogLevel};
 
 // Initialize with custom configuration
 let logger_config = LoggerConfig::new()
@@ -408,10 +408,10 @@ log::error!("Something went wrong");
 
 ## 🛠️ Error Handling
 
-RGen provides comprehensive error handling:
+rgenai provides comprehensive error handling:
 
 ```rust
-use rgen::{BedrockError, Result};
+use rgenai::{BedrockError, Result};
 
 match client.text().generate(request).await {
     Ok(response) => println!("Success: {}", response.text),
@@ -437,7 +437,7 @@ Check out the `examples/` directory for complete examples:
 ## 🏗️ Architecture
 
 ```
-rgen/
+rgenai/
 ├── src/
 │   ├── bedrock/          # AWS Bedrock clients
 │   │   ├── text_client.rs
@@ -461,8 +461,8 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ```bash
 # Clone the repository
-git clone https://github.com/DevMaan707/rgen.git
-cd rgen
+git clone https://github.com/DevMaan707/rgenai.git
+cd rgenai
 
 # Install dependencies
 cargo build
@@ -486,9 +486,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Documentation**: [docs.rs/rgen](https://docs.rs/rgen)
-- **Issues**: [GitHub Issues](https://github.com/DevMaan707/rgen/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/DevMaan707/rgen/discussions)
+- **Documentation**: [docs.rs/rgenai](https://docs.rs/rgenai)
+- **Issues**: [GitHub Issues](https://github.com/DevMaan707/rgenai/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/DevMaan707/rgenaiai/discussions)
 
 ---
 
