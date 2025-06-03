@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use rgen::{BedrockClient, BedrockConfig, TextClient,ImageClient};
+use rgenai::{BedrockClient, BedrockConfig, TextClient,ImageClient};
 use std::env;
 use std::fs;
 
@@ -11,8 +11,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(_) => log::warn!("⚠️  No .env file found, using system environment variables"),
     }
 
-    rgen::logger::init_with_config(
-        rgen::logger::LoggerConfig::development().with_level(rgen::logger::LogLevel::Debug),
+    rgenai::logger::init_with_config(
+        rgenai::logger::LoggerConfig::development().with_level(rgenai::logger::LogLevel::Debug),
     )?;
 
     log::info!("🔍 Checking AWS environment...");
@@ -84,7 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for model_id in test_models {
         log::info!("🧪 Testing model: {}", model_id);
 
-        let text_request = rgen::TextGenerationRequest {
+        let text_request = rgenai::TextGenerationRequest {
             prompt: "Write a haiku about technology".to_string(),
             max_tokens: Some(100),
             temperature: Some(0.7),
@@ -122,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for model_id in streaming_models {
         log::info!("🧪 Testing streaming with model: {}", model_id);
 
-        let stream_request = rgen::TextGenerationRequest {
+        let stream_request = rgenai::TextGenerationRequest {
             prompt: "Tell me a short story about a robot learning to paint".to_string(),
             max_tokens: Some(200),
             temperature: Some(0.8),
@@ -188,7 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for model_id in image_models {
         log::info!("🧪 Testing image generation with model: {}", model_id);
 
-        let image_request = rgen::ImageGenerationRequest {
+        let image_request = rgenai::ImageGenerationRequest {
             prompt: "A serene landscape with mountains and a lake at sunset, digital art style"
                 .to_string(),
             model_id: Some(model_id.to_string()),
@@ -244,7 +244,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // for model_id in embedding_models {
     //     log::info!("🧪 Testing embedding with model: {}", model_id);
 
-    //     let embedding_request = rgen::EmbeddingRequest {
+    //     let embedding_request = rgenai::EmbeddingRequest {
     //         text: "The quick brown fox jumps over the lazy dog. This is a test sentence for embedding generation.".to_string(),
     //         model_id: Some(model_id.to_string()),
     //     };
@@ -322,7 +322,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let mut embeddings = Vec::new();
 
     // for sentence in &test_sentences {
-    //     let embedding_request = rgen::EmbeddingRequest {
+    //     let embedding_request = rgenai::EmbeddingRequest {
     //         text: sentence.to_string(),
     //         model_id: Some("amazon.titan-embed-text-v2:0".to_string()),
     //     };
@@ -358,7 +358,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // // Test 6: Error handling
     // log::info!("🧪 Testing error handling...");
 
-    // let invalid_request = rgen::TextGenerationRequest {
+    // let invalid_request = rgenai::TextGenerationRequest {
     //     prompt: "Test".to_string(),
     //     max_tokens: Some(100),
     //     temperature: Some(0.7),
