@@ -1,6 +1,6 @@
 [package]
 name = "rgenai"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Mohammed Aymaan <dev.maan707@gmail.com>"]
 description = "RGen is a comprehensive Rust library for AWS Bedrock that provides easy-to-use clients for text generation, image generation, embeddings, and vector storage. Built with performance, type safety, and developer experience in mind."
