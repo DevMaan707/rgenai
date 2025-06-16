@@ -9,7 +9,7 @@ pub enum BedrockError {
     SerializationError(String),
     InternalError(String),
     AwsError(String),
-    AwsServiceError(String), // Add this for more specific AWS errors
+    AwsServiceError(String),
 }
 
 impl fmt::Display for BedrockError {

@@ -80,8 +80,6 @@ impl VectorStorageManager {
         &self.backend
     }
 }
-
-// Convenience methods that delegate to the backend
 impl VectorStorageManager {
     pub async fn insert(
         &self,

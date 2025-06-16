@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::ModelProvider;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct TextGenerationRequest {
     pub prompt: String,
@@ -7,6 +9,7 @@ pub struct TextGenerationRequest {
     pub temperature: Option<f32>,
     pub model_id: Option<String>,
     pub stream: Option<bool>,
+    pub provider: Option<ModelProvider>,
 }
 
 #[derive(Debug, Serialize)]

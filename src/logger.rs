@@ -57,8 +57,6 @@ impl LogLevel {
             LogLevel::Fatal => "💀",
         }
     }
-
-    /// Get the string representation
     pub fn as_str(&self) -> &'static str {
         match self {
             LogLevel::Trace => "TRACE",
@@ -69,8 +67,6 @@ impl LogLevel {
             LogLevel::Fatal => "FATAL",
         }
     }
-
-    /// Convert to log crate's Level
     pub fn to_log_level(&self) -> Level {
         match self {
             LogLevel::Trace => Level::Trace,
@@ -78,11 +74,9 @@ impl LogLevel {
             LogLevel::Info => Level::Info,
             LogLevel::Warn => Level::Warn,
             LogLevel::Error => Level::Error,
-            LogLevel::Fatal => Level::Error, // Fatal maps to Error in log crate
+            LogLevel::Fatal => Level::Error,
         }
     }
-
-    /// Convert to log crate's LevelFilter
     pub fn to_log_level_filter(&self) -> log::LevelFilter {
         match self {
             LogLevel::Trace => log::LevelFilter::Trace,
@@ -94,7 +88,6 @@ impl LogLevel {
         }
     }
 
-    /// Convert from log crate's Level
     pub fn from_log_level(level: Level) -> Self {
         match level {
             Level::Trace => LogLevel::Trace,
@@ -106,7 +99,6 @@ impl LogLevel {
     }
 }
 
-/// Structured log entry with rich metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
     pub id: String,
@@ -157,7 +149,6 @@ impl LogEntry {
     }
 }
 
-/// Logger configuration with extensive customization options
 #[derive(Debug, Clone)]
 pub struct LoggerConfig {
     pub min_level: LogLevel,
@@ -246,11 +237,9 @@ impl LoggerConfig {
     }
 }
 
-/// The main beautiful logger implementation
 pub struct BeautifulLogger {
     config: Arc<Mutex<LoggerConfig>>,
     log_file: Arc<Mutex<Option<File>>>,
-    start_time: Instant,
 }
 
 impl BeautifulLogger {
@@ -258,15 +247,12 @@ impl BeautifulLogger {
         Self {
             config: Arc::new(Mutex::new(LoggerConfig::default())),
             log_file: Arc::new(Mutex::new(None)),
-            start_time: Instant::now(),
         }
     }
 
     pub fn update_config(&self, new_config: LoggerConfig) {
         let mut config = self.config.lock().unwrap();
         *config = new_config.clone();
-
-        // Initialize file if needed
         if new_config.log_to_file {
             if let Ok(file) = OpenOptions::new()
                 .create(true)
@@ -281,13 +267,9 @@ impl BeautifulLogger {
 
     fn format_console_output(&self, entry: &LogEntry, config: &LoggerConfig) -> String {
         let mut output = String::new();
-
-        // Custom prefix
         if let Some(prefix) = &config.custom_prefix {
             output.push_str(&format!("[{}] ", prefix.bright_white().bold()));
         }
-
-        // Timestamp
         if config.include_timestamp {
             let timestamp = entry.timestamp.format(&config.timestamp_format);
             if config.show_colors {
@@ -296,8 +278,6 @@ impl BeautifulLogger {
                 output.push_str(&format!("{} ", timestamp));
             }
         }
-
-        // Level with emoji and color
         let level_str = if config.show_emojis {
             format!("{} {}", entry.level.emoji(), entry.level.as_str())
         } else {
@@ -312,8 +292,6 @@ impl BeautifulLogger {
         } else {
             output.push_str(&format!("[{}] ", level_str));
         }
-
-        // Module
         if config.show_module && !entry.module.is_empty() {
             if config.show_colors {
                 output.push_str(&format!("{}::", entry.module.bright_blue()));
@@ -321,15 +299,11 @@ impl BeautifulLogger {
                 output.push_str(&format!("{}::", entry.module));
             }
         }
-
-        // Message
         if config.show_colors {
             output.push_str(&entry.message.white().bold().to_string());
         } else {
             output.push_str(&entry.message);
         }
-
-        // Context
         if !entry.context.is_empty() {
             output.push_str(" ");
             if config.show_colors {
@@ -343,8 +317,6 @@ impl BeautifulLogger {
                 output.push_str(&serde_json::to_string(&entry.context).unwrap_or_default());
             }
         }
-
-        // Request ID
         if let Some(request_id) = &entry.request_id {
             if config.show_colors {
                 output.push_str(&format!(" [req:{}]", request_id.bright_yellow()));
@@ -352,8 +324,6 @@ impl BeautifulLogger {
                 output.push_str(&format!(" [req:{}]", request_id));
             }
         }
-
-        // Duration
         if let Some(duration) = entry.duration_ms {
             if config.show_colors {
                 output.push_str(&format!(" [{}ms]", duration.to_string().bright_magenta()));
@@ -361,8 +331,6 @@ impl BeautifulLogger {
                 output.push_str(&format!(" [{}ms]", duration));
             }
         }
-
-        // Thread ID
         if config.show_thread_id {
             if config.show_colors {
                 output.push_str(&format!(" [thread:{}]", entry.thread_id.bright_black()));
@@ -370,8 +338,6 @@ impl BeautifulLogger {
                 output.push_str(&format!(" [thread:{}]", entry.thread_id));
             }
         }
-
-        // File location
         if config.show_file_location {
             let location = format!("{}:{}", entry.file, entry.line);
             if config.show_colors {
@@ -414,7 +380,7 @@ impl log::Log for BeautifulLogger {
         if let Ok(config) = self.config.lock() {
             metadata.level() <= config.min_level.to_log_level()
         } else {
-            true // Default to enabled if we can't get the config
+            true
         }
     }
 
@@ -423,14 +389,11 @@ impl log::Log for BeautifulLogger {
             let entry = self.create_log_entry(record);
 
             if let Ok(config) = self.config.lock() {
-                // Console output
                 if config.output_json {
                     println!("{}", serde_json::to_string(&entry).unwrap_or_default());
                 } else {
                     println!("{}", self.format_console_output(&entry, &config));
                 }
-
-                // File output
                 if config.log_to_file {
                     self.write_to_file(&entry, &config);
                 }
@@ -447,12 +410,8 @@ impl log::Log for BeautifulLogger {
         }
     }
 }
-
-// Ensure the logger is thread-safe
 unsafe impl Sync for BeautifulLogger {}
 unsafe impl Send for BeautifulLogger {}
-
-/// Performance timer for measuring operation duration
 pub struct Timer {
     start: Instant,
     name: String,
@@ -486,8 +445,6 @@ impl Drop for Timer {
         self.stop();
     }
 }
-
-/// Convenience macros for enhanced logging
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)*) => {
@@ -522,20 +479,14 @@ macro_rules! log_trace {
         log::trace!("🔍 {}", format!($($arg)*))
     };
 }
-
-/// Create a new performance timer
 pub fn timer(name: &str) -> Timer {
     Timer::new(name)
 }
-
-/// Log application startup information
 pub fn log_startup_info(app_name: &str, version: &str, port: u16) {
     log::info!("🚀 Starting {} v{}", app_name, version);
     log::info!("🌐 Server will run on http://127.0.0.1:{}", port);
     log::info!("📝 Logger initialized successfully");
 }
-
-/// Log configuration details
 pub fn log_config_info(config: &crate::config::Config) {
     log::info!("⚙️  Configuration loaded:");
     log::info!("   Port: {}", config.port.unwrap_or(8080));

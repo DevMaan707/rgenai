@@ -50,8 +50,6 @@ impl PineconeVectorStorage {
             index_name,
             base_url,
         };
-
-        // Test connection
         storage.health_check().await?;
 
         Ok(storage)
@@ -168,7 +166,6 @@ impl VectorStorage for PineconeVectorStorage {
         let mut results = Vec::new();
 
         if response.status().is_success() {
-            // Pinecone returns success for the whole batch, so we assume all succeeded
             for record in records {
                 let id = record.id.unwrap_or_else(|| Uuid::new_v4().to_string());
                 results.push(InsertResult {

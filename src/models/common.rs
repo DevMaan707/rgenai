@@ -17,7 +17,16 @@ pub enum ModelCategory {
     Image,
     Embedding,
 }
-
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ModelProvider {
+    Amazon,
+    Anthropic,
+    Cohere,
+    AI21,
+    Meta,
+    Mistral,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamChunk {
     pub chunk: String,

@@ -86,7 +86,6 @@ impl BedrockClient {
         self.storage.as_ref()
     }
 
-    /// Generate embedding and optionally store it
     pub async fn embed_and_store(
         &self,
         text: &str,
@@ -94,7 +93,6 @@ impl BedrockClient {
         metadata: Option<std::collections::HashMap<String, serde_json::Value>>,
         namespace: Option<&str>,
     ) -> Result<crate::models::storage::InsertResult> {
-        // Generate embedding
         let embedding_request = crate::models::embedding::EmbeddingRequest {
             text: text.to_string(),
             model_id: model_id.map(String::from),
@@ -105,11 +103,20 @@ impl BedrockClient {
             .generate_embedding(embedding_request)
             .await?;
 
-        // Store if storage is available
+        let response_json: serde_json::Value = serde_json::from_str(&embedding_response)
+            .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
+
+        let embedding = response_json["embedding"]
+            .as_array()
+            .ok_or_else(|| BedrockError::ResponseError("No embedding found in response".into()))?
+            .iter()
+            .filter_map(|v| v.as_f64().map(|f| f as f32))
+            .collect();
+
         if let Some(storage) = &self.storage {
             let insert_record = crate::models::storage::VectorInsert {
                 id: None,
-                vector: embedding_response.embedding,
+                vector: embedding,
                 metadata: metadata.unwrap_or_default(),
                 content: Some(text.to_string()),
                 namespace: namespace.map(String::from),
@@ -122,7 +129,6 @@ impl BedrockClient {
             ))
         }
     }
-
     pub async fn semantic_search(
         &self,
         query: &str,
@@ -140,10 +146,19 @@ impl BedrockClient {
             .vector_client
             .generate_embedding(embedding_request)
             .await?;
+        let response_json: serde_json::Value = serde_json::from_str(&embedding_response)
+            .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
+
+        let embedding = response_json["embedding"]
+            .as_array()
+            .ok_or_else(|| BedrockError::ResponseError("No embedding found in response".into()))?
+            .iter()
+            .filter_map(|v| v.as_f64().map(|f| f as f32))
+            .collect();
 
         if let Some(storage) = &self.storage {
             let search_query = crate::models::storage::VectorSearch {
-                vector: embedding_response.embedding,
+                vector: embedding,
                 limit,
                 namespace: namespace.map(String::from),
                 filter: None,
@@ -158,8 +173,6 @@ impl BedrockClient {
             ))
         }
     }
-
-    /// RAG: Retrieve relevant context and generate response
     pub async fn generate_with_context(
         &self,
         query: &str,
@@ -170,18 +183,9 @@ impl BedrockClient {
         max_tokens: Option<i32>,
         temperature: Option<f32>,
     ) -> Result<String> {
-        // 1. Search for relevant context
         let search_results = self
-            .semantic_search(
-                query,
-                context_limit,
-                embedding_model,
-                namespace,
-                true, // include content
-            )
+            .semantic_search(query, context_limit, embedding_model, namespace, true)
             .await?;
-
-        // 2. Build context from search results
         let context: Vec<String> = search_results
             .results
             .iter()
@@ -192,8 +196,6 @@ impl BedrockClient {
         if context.is_empty() {
             log::warn!("No relevant context found for query");
         }
-
-        // 3. Build enhanced prompt with context
         let context_text = context.join("\n\n");
         let enhanced_prompt = if !context_text.is_empty() {
             format!(
@@ -204,16 +206,16 @@ impl BedrockClient {
             format!("Question: {}\n\nAnswer:", query)
         };
 
-        // 4. Generate response
         let text_request = crate::models::text::TextGenerationRequest {
             prompt: enhanced_prompt,
             max_tokens,
             temperature,
             model_id: generation_model.map(String::from),
             stream: None,
+            provider: None,
         };
 
         let response = self.text_client.generate(text_request).await?;
-        Ok(response.text)
+        Ok(response)
     }
 }

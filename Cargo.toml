@@ -58,3 +58,6 @@ pinecone = []
 upstash = []
 storage = ["postgres", "pinecone", "upstash"]
 server = ["actix-web"]
+[[example]]
+name = "text"
+path = "examples/text.rs"

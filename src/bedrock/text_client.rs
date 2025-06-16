@@ -1,11 +1,9 @@
 use crate::{
     error::{BedrockError, Result},
-    models::{
-        LlamaResponse, StreamChunk, TextGenerationRequest, TextGenerationResponse,
-        TitanTextResponse,
-    },
+    models::{StreamChunk, TextGenerationRequest},
+    ModelProvider,
 };
-use aws_sdk_bedrockruntime::{primitives::Blob, Client};
+use aws_sdk_bedrockruntime::{error::ProvideErrorMetadata, primitives::Blob, Client};
 use futures::stream::Stream;
 use serde_json::json;
 use std::pin::Pin;
@@ -21,171 +19,51 @@ impl TextClient {
         Self { client }
     }
 
-    /// Get list of supported models with their proper IDs
-    pub fn supported_models() -> Vec<(String, String, String)> {
-        vec![
-            // Amazon Titan models
-            (
-                "amazon.titan-text-express-v1".to_string(),
-                "Amazon Titan Text Express".to_string(),
-                "Amazon".to_string(),
-            ),
-            (
-                "amazon.titan-text-lite-v1".to_string(),
-                "Amazon Titan Text Lite".to_string(),
-                "Amazon".to_string(),
-            ),
-            (
-                "amazon.titan-text-premier-v1:0".to_string(),
-                "Amazon Titan Text Premier".to_string(),
-                "Amazon".to_string(),
-            ),
-            // Anthropic Claude models
-            (
-                "anthropic.claude-3-5-sonnet-20241022-v2:0".to_string(),
-                "Claude 3.5 Sonnet".to_string(),
-                "Anthropic".to_string(),
-            ),
-            (
-                "anthropic.claude-3-sonnet-20240229-v1:0".to_string(),
-                "Claude 3 Sonnet".to_string(),
-                "Anthropic".to_string(),
-            ),
-            (
-                "anthropic.claude-3-haiku-20240307-v1:0".to_string(),
-                "Claude 3 Haiku".to_string(),
-                "Anthropic".to_string(),
-            ),
-            (
-                "anthropic.claude-3-opus-20240229-v1:0".to_string(),
-                "Claude 3 Opus".to_string(),
-                "Anthropic".to_string(),
-            ),
-            (
-                "anthropic.claude-v2:1".to_string(),
-                "Claude 2.1".to_string(),
-                "Anthropic".to_string(),
-            ),
-            (
-                "anthropic.claude-instant-v1".to_string(),
-                "Claude Instant".to_string(),
-                "Anthropic".to_string(),
-            ),
-            // Meta Llama models
-            (
-                "meta.llama2-13b-chat-v1".to_string(),
-                "Llama 2 13B Chat".to_string(),
-                "Meta".to_string(),
-            ),
-            (
-                "meta.llama2-70b-chat-v1".to_string(),
-                "Llama 2 70B Chat".to_string(),
-                "Meta".to_string(),
-            ),
-            (
-                "meta.llama3-8b-instruct-v1:0".to_string(),
-                "Llama 3 8B Instruct".to_string(),
-                "Meta".to_string(),
-            ),
-            (
-                "meta.llama3-70b-instruct-v1:0".to_string(),
-                "Llama 3 70B Instruct".to_string(),
-                "Meta".to_string(),
-            ),
-            (
-                "meta.llama3-1-8b-instruct-v1:0".to_string(),
-                "Llama 3.1 8B Instruct".to_string(),
-                "Meta".to_string(),
-            ),
-            (
-                "meta.llama3-1-70b-instruct-v1:0".to_string(),
-                "Llama 3.1 70B Instruct".to_string(),
-                "Meta".to_string(),
-            ),
-            (
-                "meta.llama3-1-405b-instruct-v1:0".to_string(),
-                "Llama 3.1 405B Instruct".to_string(),
-                "Meta".to_string(),
-            ),
-            // Mistral models
-            (
-                "mistral.mistral-7b-instruct-v0:2".to_string(),
-                "Mistral 7B Instruct".to_string(),
-                "Mistral".to_string(),
-            ),
-            (
-                "mistral.mixtral-8x7b-instruct-v0:1".to_string(),
-                "Mixtral 8x7B Instruct".to_string(),
-                "Mistral".to_string(),
-            ),
-            (
-                "mistral.mistral-large-2402-v1:0".to_string(),
-                "Mistral Large".to_string(),
-                "Mistral".to_string(),
-            ),
-            (
-                "mistral.mistral-large-2407-v1:0".to_string(),
-                "Mistral Large 2407".to_string(),
-                "Mistral".to_string(),
-            ),
-            // AI21 models
-            (
-                "ai21.j2-ultra-v1".to_string(),
-                "Jurassic-2 Ultra".to_string(),
-                "AI21".to_string(),
-            ),
-            (
-                "ai21.j2-mid-v1".to_string(),
-                "Jurassic-2 Mid".to_string(),
-                "AI21".to_string(),
-            ),
-            (
-                "ai21.jamba-instruct-v1:0".to_string(),
-                "Jamba Instruct".to_string(),
-                "AI21".to_string(),
-            ),
-            // Cohere models
-            (
-                "cohere.command-text-v14".to_string(),
-                "Command".to_string(),
-                "Cohere".to_string(),
-            ),
-            (
-                "cohere.command-light-text-v14".to_string(),
-                "Command Light".to_string(),
-                "Cohere".to_string(),
-            ),
-            (
-                "cohere.command-r-v1:0".to_string(),
-                "Command R".to_string(),
-                "Cohere".to_string(),
-            ),
-            (
-                "cohere.command-r-plus-v1:0".to_string(),
-                "Command R+".to_string(),
-                "Cohere".to_string(),
-            ),
-        ]
-    }
-
-    pub async fn generate(&self, request: TextGenerationRequest) -> Result<TextGenerationResponse> {
+    pub async fn generate(&self, request: TextGenerationRequest) -> Result<String> {
         let model_id = request
             .model_id
             .as_deref()
             .unwrap_or("amazon.titan-text-express-v1");
 
-        // Validate model ID
-        if !Self::is_model_supported(model_id) {
-            log::warn!(
-                "Model '{}' may not be supported. Available models:",
-                model_id
-            );
-            for (id, name, provider) in Self::supported_models() {
-                log::info!("  {} - {} ({})", id, name, provider);
-            }
-        }
-
-        let request_payload = self.build_request_payload(&request, model_id)?;
+        let request_payload = match request.provider.unwrap_or(ModelProvider::Amazon) {
+            ModelProvider::Amazon => json!({
+                "inputText": request.prompt,
+                "textGenerationConfig": {
+                    "maxTokenCount": request.max_tokens.unwrap_or(512),
+                    "temperature": request.temperature.unwrap_or(0.7),
+                    "topP": 0.9
+                }
+            }),
+            ModelProvider::Anthropic => json!({
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": request.prompt
+                    }
+                ],
+                "max_tokens": request.max_tokens.unwrap_or(512),
+                "temperature": request.temperature.unwrap_or(0.7),
+                "anthropic_version": "bedrock-2023-05-31"
+            }),
+            ModelProvider::Cohere => json!({
+                "prompt": request.prompt,
+                "max_tokens": request.max_tokens.unwrap_or(512),
+                "temperature": request.temperature.unwrap_or(0.7),
+                "p": 0.9
+            }),
+            ModelProvider::AI21 => json!({
+                "prompt": request.prompt,
+                "maxTokens": request.max_tokens.unwrap_or(512),
+                "temperature": request.temperature.unwrap_or(0.7),
+                "topP": 0.9
+            }),
+            ModelProvider::Meta | ModelProvider::Mistral => json!({
+                "prompt": request.prompt,
+                "max_tokens": request.max_tokens.unwrap_or(512),
+                "temperature": request.temperature.unwrap_or(0.7),
+                "top_p": 0.9
+            }),
+        };
         let request_json = serde_json::to_string(&request_payload)
             .map_err(|e| BedrockError::SerializationError(e.to_string()))?;
 
@@ -205,22 +83,20 @@ impl TextClient {
                 log::error!("AWS SDK Text Generation Error details: {:?}", e);
 
                 if let Some(service_error) = e.as_service_error() {
+                    log::error!("Service error code: {:?}", service_error.code());
+                    log::error!("Service error message: {:?}", service_error.message());
                     BedrockError::AwsServiceError(format!(
-                        "Text generation service error: {:?}",
-                        service_error
+                        "Bedrock service error: {} - {}",
+                        service_error.code().unwrap_or("unknown"),
+                        service_error.message().unwrap_or("no message")
                     ))
                 } else {
-                    BedrockError::AwsError(format!("Text generation error: {}", e))
+                    BedrockError::AwsError(format!("AWS SDK error: {}", e))
                 }
             })?;
 
         let response_bytes = response.body.into_inner();
-        let response_str = String::from_utf8(response_bytes)
-            .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
-
-        log::debug!("Text generation raw response: {}", response_str);
-
-        self.parse_response(&response_str, model_id)
+        String::from_utf8(response_bytes).map_err(|e| BedrockError::ResponseError(e.to_string()))
     }
 
     pub async fn generate_stream(
@@ -233,8 +109,6 @@ impl TextClient {
             .unwrap_or("amazon.titan-text-express-v1");
 
         let mut request_payload = self.build_request_payload(&request, model_id)?;
-
-        // Add streaming configuration based on model type
         match model_id {
             id if id.starts_with("amazon.titan") => {
                 if let Some(obj) = request_payload.as_object_mut() {
@@ -316,12 +190,6 @@ impl TextClient {
         Ok(Box::pin(ReceiverStream::new(rx)))
     }
 
-    fn is_model_supported(model_id: &str) -> bool {
-        Self::supported_models()
-            .iter()
-            .any(|(id, _, _)| id == model_id)
-    }
-
     fn build_request_payload(
         &self,
         request: &TextGenerationRequest,
@@ -347,6 +215,17 @@ impl TextClient {
                 "max_tokens": request.max_tokens.unwrap_or(512),
                 "temperature": request.temperature.unwrap_or(0.7),
                 "top_p": 0.9
+            }),
+            id if id.starts_with("arn:aws:bedrock") => json!({
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": request.prompt
+                    }
+                ],
+                "max_tokens": request.max_tokens.unwrap_or(512),
+                "temperature": request.temperature.unwrap_or(0.7),
+                "anthropic_version": "bedrock-2023-05-31"
             }),
             id if id.starts_with("anthropic.claude") => json!({
                 "messages": [
@@ -382,117 +261,6 @@ impl TextClient {
         Ok(payload)
     }
 
-    fn parse_response(&self, response_str: &str, model_id: &str) -> Result<TextGenerationResponse> {
-        match model_id {
-            id if id.starts_with("amazon.titan") => {
-                let titan_response: TitanTextResponse = serde_json::from_str(response_str)
-                    .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
-
-                let text_length = titan_response.output_text.len();
-                let estimated_tokens = (text_length as f32 / 4.0).ceil() as i32;
-
-                Ok(TextGenerationResponse {
-                    text: titan_response.output_text,
-                    model: model_id.to_string(),
-                    tokens_generated: estimated_tokens,
-                    tokens_prompt: 0,
-                    finish_reason: titan_response.completion_reason,
-                })
-            }
-            id if id.starts_with("meta.llama") || id.starts_with("mistral.mistral") => {
-                let llama_response: LlamaResponse = serde_json::from_str(response_str)
-                    .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
-
-                Ok(TextGenerationResponse {
-                    text: llama_response.generation,
-                    model: model_id.to_string(),
-                    tokens_generated: llama_response.generation_token_count,
-                    tokens_prompt: llama_response.prompt_token_count,
-                    finish_reason: Some(llama_response.stop_reason),
-                })
-            }
-            id if id.starts_with("anthropic.claude") => {
-                let claude_response: serde_json::Value = serde_json::from_str(response_str)
-                    .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
-
-                let content = claude_response["content"][0]["text"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string();
-
-                let usage = &claude_response["usage"];
-                let input_tokens = usage["input_tokens"].as_i64().unwrap_or(0) as i32;
-                let output_tokens = usage["output_tokens"].as_i64().unwrap_or(0) as i32;
-
-                Ok(TextGenerationResponse {
-                    text: content,
-                    model: model_id.to_string(),
-                    tokens_generated: output_tokens,
-                    tokens_prompt: input_tokens,
-                    finish_reason: claude_response["stop_reason"].as_str().map(String::from),
-                })
-            }
-            id if id.starts_with("ai21.") => {
-                let ai21_response: serde_json::Value = serde_json::from_str(response_str)
-                    .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
-
-                let completions = ai21_response["completions"]
-                    .as_array()
-                    .ok_or_else(|| BedrockError::ResponseError("No completions found".into()))?;
-
-                if completions.is_empty() {
-                    return Err(BedrockError::ResponseError(
-                        "Empty completions array".into(),
-                    ));
-                }
-
-                let text = completions[0]["data"]["text"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string();
-
-                Ok(TextGenerationResponse {
-                    text,
-                    model: model_id.to_string(),
-                    tokens_generated: ai21_response["prompt"]["tokens"]
-                        .as_array()
-                        .map(|a| a.len() as i32)
-                        .unwrap_or(0),
-                    tokens_prompt: 0,
-                    finish_reason: completions[0]["finishReason"]["reason"]
-                        .as_str()
-                        .map(String::from),
-                })
-            }
-            id if id.starts_with("cohere.command") => {
-                let cohere_response: serde_json::Value = serde_json::from_str(response_str)
-                    .map_err(|e| BedrockError::ResponseError(e.to_string()))?;
-
-                let generations = cohere_response["generations"]
-                    .as_array()
-                    .ok_or_else(|| BedrockError::ResponseError("No generations found".into()))?;
-
-                if generations.is_empty() {
-                    return Err(BedrockError::ResponseError(
-                        "Empty generations array".into(),
-                    ));
-                }
-
-                let text = generations[0]["text"].as_str().unwrap_or("").to_string();
-
-                Ok(TextGenerationResponse {
-                    text,
-                    model: model_id.to_string(),
-                    tokens_generated: 0, // Cohere doesn't always provide token counts
-                    tokens_prompt: 0,
-                    finish_reason: generations[0]["finish_reason"].as_str().map(String::from),
-                })
-            }
-            _ => Err(BedrockError::ResponseError("Unknown model type".into())),
-        }
-    }
-
-    // Static version for use in async context
     fn parse_stream_chunk_static(chunk_str: &str, model_id: &str) -> Result<StreamChunk> {
         let json: serde_json::Value = serde_json::from_str(chunk_str)
             .map_err(|e| BedrockError::ResponseError(e.to_string()))?;

@@ -62,8 +62,6 @@ impl PostgresVectorStorage {
             .map_err(|e| {
                 BedrockError::InternalError(format!("Failed to create vector extension: {}", e))
             })?;
-
-        // Create vectors table
         client
             .execute(
                 "CREATE TABLE IF NOT EXISTS vectors (
@@ -82,7 +80,6 @@ impl PostgresVectorStorage {
                 BedrockError::InternalError(format!("Failed to create vectors table: {}", e))
             })?;
 
-        // Create indexes
         client
             .execute(
                 "CREATE INDEX IF NOT EXISTS idx_vectors_namespace ON vectors(namespace)",
@@ -92,8 +89,6 @@ impl PostgresVectorStorage {
             .map_err(|e| {
                 BedrockError::InternalError(format!("Failed to create namespace index: {}", e))
             })?;
-
-        // Try to create vector index (might fail if not enough data)
         let _ = client.execute(
             "CREATE INDEX IF NOT EXISTS idx_vectors_vector ON vectors USING ivfflat (vector vector_cosine_ops) WITH (lists = 100)",
             &[],
@@ -461,8 +456,6 @@ impl VectorStorage for PostgresVectorStorage {
             })?;
 
         let namespace = namespace.unwrap_or("default");
-
-        // Get total count for namespace
         let count_stmt = client
             .prepare("SELECT COUNT(*) FROM vectors WHERE namespace = $1")
             .await
@@ -478,8 +471,6 @@ impl VectorStorage for PostgresVectorStorage {
             })?;
 
         let total_vectors: i64 = count_row.get(0);
-
-        // Get all namespaces
         let ns_stmt = client
             .prepare("SELECT DISTINCT namespace FROM vectors")
             .await
@@ -492,8 +483,6 @@ impl VectorStorage for PostgresVectorStorage {
         })?;
 
         let namespaces: Vec<String> = ns_rows.iter().map(|row| row.get(0)).collect();
-
-        // Try to get vector dimensions
         let dim_stmt = client
             .prepare(
                 "SELECT array_length(vector, 1) as dimensions FROM vectors WHERE namespace = $1 LIMIT 1",
@@ -536,8 +525,6 @@ impl VectorStorage for PostgresVectorStorage {
         Ok(true)
     }
 }
-
-// Stub implementation when postgres feature is disabled
 #[cfg(not(feature = "postgres"))]
 pub struct PostgresVectorStorage;
 
